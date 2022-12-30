@@ -1,8 +1,21 @@
+import os
+from dotenv import load_dotenv
+import pymongo
 import requests
-from bs4 import BeautifulSoup
-import plotly.express as px
-import pandas as pd
 import datetime
+from bs4 import BeautifulSoup
+
+load_dotenv()
+
+MONGODB_PASSWORD = os.getenv("MONGO_PASSWORD")
+
+client = pymongo.MongoClient(
+    f'mongodb+srv://admin:{MONGODB_PASSWORD}@cluster0.funxtlf.mongodb.net/?retryWrites=true&w=majority')
+
+db = client.price_tracker
+
+ENTRIES_COLLECTION = db.get_collection("entries")
+PRICES_COLLECTION = db.get_collection("prices")
 
 URL_LIST = ["https://www.amazon.com/Nintendo-Switch-OLED-Model-White-Joy/dp/B098RKWHHZ/ref=sr_1_4?keywords=nintendo%2Bswitch&qid=1672248113&sprefix=ninten%2Caps%2C76&sr=8-4&th=1"]
 
@@ -21,9 +34,19 @@ content = requests.get(URL_LIST[0], headers=REQ_HEADERS)
 
 soup = BeautifulSoup(content.text, "html.parser")
 
-price = soup.find("span", {"id": "priceblock_ourprice"})
+title = soup.find("span", {"id": "productTitle"}).text.strip()
+price = soup.find("span", {"id": "priceblock_ourprice"}).text.strip()
 
-data_frame = pd.DataFrame(
-    dict(x=[today, "Tomorrow"], y=[price.text, "$400"]))
-fig = px.line(data_frame, x="x", y="y")
-fig.write_html('first_figure.html', auto_open=True)
+entryExists = ENTRIES_COLLECTION.find_one({"title": title})
+
+if entryExists == None:
+    ENTRIES_COLLECTION.insert_one(
+        {"title": title, "date": datetime.datetime.utcnow()})
+
+existingEntry = ENTRIES_COLLECTION.find_one({"title": title})
+
+price_entry = {"entryId": existingEntry["_id"], "title": title,
+               "price": price, "date": datetime.datetime.utcnow()}
+
+
+PRICES_COLLECTION.insert_one(price_entry)
