@@ -7,10 +7,9 @@ from bs4 import BeautifulSoup
 
 load_dotenv()
 
-MONGODB_PASSWORD = os.getenv("MONGO_PASSWORD")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-client = pymongo.MongoClient(
-    f'mongodb+srv://admin:{MONGODB_PASSWORD}@cluster0.funxtlf.mongodb.net/?retryWrites=true&w=majority')
+client = pymongo.MongoClient(DATABASE_URL)
 
 db = client.price_tracker
 
